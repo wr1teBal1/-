@@ -10,7 +10,7 @@ https://github.com/user-attachments/assets/d8208729-484a-4431-81bb-733bfd2f66a7
 
 源码如下，运用示例中的basics，重新定义esp32 cam的led引脚pin 4即可
 
-`
+```arduino
 #define LED_BUILTIN 4
 void setup() {
   // initialize digital pin LED_BUILTIN as an output.
@@ -24,4 +24,4 @@ void loop() {
   digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
   delay(1000);                      // wait for a second
 }
-`
+```
