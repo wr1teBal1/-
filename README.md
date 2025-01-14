@@ -25,11 +25,11 @@ void loop() {
   delay(1000);                      // wait for a second
 }
 ```
-##TASK2.0
+## TASK2.0
 学习串⼝协议（ USART） ，向电脑发送hello world。
-###TASK 2.1
+### TASK 2.1
 学习esp32单⽚机的WiFi模块，连接⾃⼰的⼿机热点
-###TASK 2.2
+### TASK 2.2
 通过阿⾥云物联⽹平台（需要注册，但是对学⽣免费），从云端发信息到已经连接WiFi的esp32单⽚
 机，完成云端到mcu的数据流动，可以使⽤点灯等形式展现。
 TASK 2.2.1
