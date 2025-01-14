@@ -112,6 +112,254 @@ void loop() {
 ### TASK 2.2
 通过阿⾥云物联⽹平台（需要注册，但是对学⽣免费），从云端发信息到已经连接WiFi的esp32单⽚
 机，完成云端到mcu的数据流动，可以使⽤点灯等形式展现。
+
+首先在setup中设置灯引脚
+
+```c++
+  pinMode(4,OUTPUT);
+
+```
+
+接受阿里云平台topic并解析
+
+```c++
+void onMqttMessage(int messageSize) {
+  // we received a message, print out the topic and contents
+  Serial.print("Received a message with topic '");
+  Serial.print(mqttClient.messageTopic());
+  Serial.print("', duplicate = ");
+  Serial.print(mqttClient.messageDup() ? "true" : "false");
+  Serial.print(", QoS = ");
+  Serial.print(mqttClient.messageQoS());
+  Serial.print(", retained = ");
+  Serial.print(mqttClient.messageRetain() ? "true" : "false");
+  Serial.print("', length ");
+  Serial.print(messageSize);
+  Serial.println(" bytes:");
+
+  // use the Stream interface to print the contents
+  while (mqttClient.available()) {
+    char inChar =(char)mqttClient.read();
+    inputString +=inChar;
+    if(inputString.length()==messageSize) {
+
+      DynamicJsonDocument json_msg(1024);
+      DynamicJsonDocument json_item(1024);
+      DynamicJsonDocument json_value(1024);
+
+      deserializeJson(json_msg,inputString);
+
+      String items = json_msg["items"];
+
+      deserializeJson(json_item,items);
+      String led = json_item["led"];
+
+      deserializeJson(json_value,led);
+      bool value = json_value["value"];
+```
+
+解析命令,给予实现并打印
+
+```c++
+if(value ==0) {
+        //关
+        Serial.println("off");
+        digitalWrite(4,LOW);
+      } else {
+        //开
+        Serial.println("on");
+        digitalWrite(4,HIGH);
+      }
+```
+![027fa2f7c1dd35323a853e08b65827f](https://github.com/user-attachments/assets/1247db81-2d40-40e1-9384-7ae749678db3)
+![6d64f3f2f37dd68068b9c8392a1d1ab](https://github.com/user-attachments/assets/a732fe59-ff92-42da-a487-1373e64d8d0f)
+
+最后清空inputString
+
+```c++
+inputString = "";
+```
+最终源码展示
+```c++
+#include <WiFi.h>
+#include <WebServer.h>
+#include <ArduinoMqttClient.h>
+#include <ArduinoJson.h>
+
+const char* ssid = "MI8";
+const char* password = "88888888";
+IPAddress localIP(192, 168, 4, 1); // ESP32-CAM的IP地址
+WebServer server(80);
+
+WiFiClient wifiClient;
+MqttClient mqttClient(wifiClient);
+
+
+const char broker[]    = "iot-06z00fam12dey3c.mqtt.iothub.aliyuncs.com";
+int        port        = 1883;
+
+const char inTopic[]   = "/sys/k28xr7bv6Qh/esp32cam/thing/service/property/set";
+const char outTopic[]  = "/sys/k28xr7bv6Qh/esp32cam/thing/event/property/post";
+
+const long interval = 10000;
+unsigned long previousMillis = 0;
+
+int count = 0;
+
+String inputString ="";
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  pinMode(4,OUTPUT);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  mqttClient.setId("k28xr7bv6Qh.esp32cam|securemode=2,signmethod=hmacsha256,timestamp=1736782630523|");                    //mqtt 连接客户端id
+  mqttClient.setUsernamePassword("esp32cam&k28xr7bv6Qh", "3d59e1bf7add299ac391cafef98e4e225f2eaafa85eafe4690ef8e202fc9bc41");        //mqtt 连接用户名、密码
+
+  Serial.print("Attempting to connect to the MQTT broker: ");
+  Serial.println(broker);
+   if (!mqttClient.connect(broker, port)) {
+    Serial.print("MQTT connection failed! Error code = ");
+    Serial.println(mqttClient.connectError());
+
+    while (1);
+  }
+
+  Serial.println("You're connected to the MQTT broker!");
+  Serial.println();
+
+  // set the message receive callback
+  mqttClient.onMessage(onMqttMessage);
+
+  Serial.print("Subscribing to topic: ");
+  Serial.println(inTopic);
+  Serial.println();
+
+  int subscribeQos = 1;
+
+  mqttClient.subscribe(inTopic, subscribeQos);
+
+  // topics can be unsubscribed using:
+  // mqttClient.unsubscribe(inTopic);
+
+  Serial.print("Waiting for messages on topic: ");
+  Serial.println(inTopic);
+  Serial.println();
+
+  server.begin();
+
+}
+
+void loop() {
+  server.handleClient();
+   mqttClient.poll();
+
+
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval) {
+    // save the last time a message was sent
+    previousMillis = currentMillis;
+
+    String payload;
+
+//    payload = "{\"params\":{\"led\":1},\"version\":\"1.0.0\"}";
+  
+  
+
+    DynamicJsonDocument json_msg(512);
+    DynamicJsonDocument json_data(512);
+
+
+    json_msg["params"] = json_data;
+    json_msg["version"] = "1.0.0";
+
+
+    serializeJson(json_msg,payload);
+
+    Serial.print("Sending message to topic: ");
+    Serial.println(outTopic);
+    Serial.println(payload);
+
+
+    bool retained = false;
+    int qos = 1;
+    bool dup = false;
+
+    mqttClient.beginMessage(outTopic, payload.length(), retained, qos, dup);
+    mqttClient.print(payload);
+    mqttClient.endMessage();
+
+    Serial.println();
+
+    count++;
+  }
+}
+void onMqttMessage(int messageSize) {
+  // we received a message, print out the topic and contents
+  Serial.print("Received a message with topic '");
+  Serial.print(mqttClient.messageTopic());
+  Serial.print("', duplicate = ");
+  Serial.print(mqttClient.messageDup() ? "true" : "false");
+  Serial.print(", QoS = ");
+  Serial.print(mqttClient.messageQoS());
+  Serial.print(", retained = ");
+  Serial.print(mqttClient.messageRetain() ? "true" : "false");
+  Serial.print("', length ");
+  Serial.print(messageSize);
+  Serial.println(" bytes:");
+
+  // use the Stream interface to print the contents
+  while (mqttClient.available()) {
+    char inChar =(char)mqttClient.read();
+    inputString +=inChar;
+    if(inputString.length()==messageSize) {
+
+      DynamicJsonDocument json_msg(1024);
+      DynamicJsonDocument json_item(1024);
+      DynamicJsonDocument json_value(1024);
+
+      deserializeJson(json_msg,inputString);
+
+      String items = json_msg["items"];
+
+      deserializeJson(json_item,items);
+      String led = json_item["led"];
+
+      deserializeJson(json_value,led);
+      bool value = json_value["value"];
+
+      if(value ==0) {
+        //关
+        Serial.println("off");
+        digitalWrite(4,LOW);
+      } else {
+        //开
+        Serial.println("on");
+        digitalWrite(4,HIGH);
+      }
+      inputString="";
+    }
+
+
+  }
+  Serial.println();
+
+  Serial.println();
+}
+```
 ### TASK 2.2.1
 拓展1:使⽤Android Studio，搭建⼀个⼿机软件，在⼿机软件界⾯完成点灯等任务。
 ### TASK 2.2.2
