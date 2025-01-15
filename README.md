@@ -362,6 +362,180 @@ void onMqttMessage(int messageSize) {
 ```
 ### TASK 2.2.1
 拓展1:使⽤Android Studio，搭建⼀个⼿机软件，在⼿机软件界⾯完成点灯等任务。
+
+设置软件界面
+
+文字与按钮显示（“关”按钮省略）
+```java
+<LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="50dp">
+
+        <TextView
+            android:layout_width="254dp"
+            android:layout_height="wrap_content"
+            android:text="灯怎么灭了，点一下试试？"
+            android:textColor="@color/black"
+            android:textSize="17sp" />
+
+        <Button
+            android:id="@+id/btn_open"
+            android:layout_width="100dp"
+            android:layout_height="wrap_content"
+            android:text="开"
+            android:textColor="@color/black"
+            android:textSize="17sp" />
+
+
+    </LinearLayout>
+```
+![4e2c73801a71652942d01e52655ab0b](https://github.com/user-attachments/assets/7a3b3d36-c751-4efe-839a-15096aef22e8)
+
+
+定义密钥，用户名及密码
+
+```c++
+private String productKey = "k28xr7bv6Qh";
+    private String deviceName = "app_dev";
+
+    private String deviceSecret = "89c41d57befdc89787c69ca79589bfd8";
+```
+
+定义订阅与发送地址
+
+```c++
+private final String pub_topic = "/sys/k28xr7bv6Qh/app_dev/thing/event/property/post";
+
+    private final String sub_topic = "/sys/k28xr7bv6Qh/app_dev/thing/service/property/set";
+```
+云端连接方法
+```c++
+private void mqtt_init() {
+        try {
+
+            String clientId = "a1MoTKOqkVK.test_device1";
+            Map<String, String> params = new HashMap<String, String>(16);
+            params.put("productKey", productKey);
+            params.put("deviceName", deviceName);
+            params.put("clientId", clientId);
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            params.put("timestamp", timestamp);
+            // cn-shanghai
+            String host_url = "tcp://" + productKey + ".iot-as-mqtt.cn-shanghai.aliyuncs.com:1883";
+            String client_id = clientId + "|securemode=2,signmethod=hmacsha1,timestamp=" + timestamp + "|";
+            String user_name = deviceName + "&" + productKey;
+            String password = com.example.dengzenmemiele_mqtt.AliyunloTSignUtil.sign(params, deviceSecret, "hmacsha1");
+
+            //host为主机名，test为clientid即连接MQTT的客户端ID，一般以客户端唯一标识符表示，MemoryPersistence设置clientid的保存形式，默认为以内存保存
+            System.out.println(">>>" + host_url);
+            System.out.println(">>>" + client_id);
+
+            //connectMqtt(targetServer, mqttclientId, mqttUsername, mqttPassword);
+
+            client = new MqttClient(host_url, client_id, new MemoryPersistence());
+
+
+            //MQTT的连接设置
+            options = new MqttConnectOptions();
+            //设置是否清空session,这里如果设置为false表示服务器会保留客户端的连接记录，这里设置为true表示每次连接到服务器都以新的身份连接
+            options.setCleanSession(false);
+            //设置连接的用户名
+            options.setUserName(user_name);
+            //设置连接的密码
+            options.setPassword(password.toCharArray());
+            // 设置超时时间 单位为秒
+            options.setConnectionTimeout(10);
+            // 设置会话心跳时间 单位为秒 服务器会每隔1.5*20秒的时间向客户端发送个消息判断客户端是否在线，但这个方法并没有重连的机制
+            options.setKeepAliveInterval(60);
+            //设置回调
+            client.setCallback(new MqttCallback() {
+                @Override
+                public void connectionLost(Throwable cause) {
+                    //连接丢失后，一般在这里面进行重连
+                    System.out.println("connectionLost----------");
+                }
+
+                @Override
+                public void deliveryComplete(IMqttDeliveryToken token) {
+                    //publish后会执行到这里
+                    System.out.println("deliveryComplete---------" + token.isComplete());
+                }
+
+                @Override
+                public void messageArrived(String topicName, MqttMessage message)
+                        throws Exception {
+                    //subscribe后得到的消息会执行到这里面
+                    System.out.println("messageArrived----------");
+                    Message msg = new Message();
+                    //封装message包
+                    msg.what = 3;   //收到消息标志位
+                    msg.obj = message.toString();
+                    //发送messge到handler
+                    handler.sendMessage(msg);    // hander 回传
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+```
+
+
+
+定义按钮功能
+
+```c++
+Button btn_open = findViewById(R.id.btn_open);
+        Button btn_close = findViewById(R.id.btn_close);
+
+        btn_open.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //开
+                publish_message("{\"params\":{\"led\":1},\"version\":\"1.0.0\"}");
+            }
+        });
+        btn_close.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //关
+                publish_message("{\"params\":{\"led\":0},\"version\":\"1.0.0\"}");
+            }
+        });
+```
+
+实现按钮功能（向云端发送json数据）
+
+```c++
+private void publish_message(String message) {
+        if (client == null || !client.isConnected()) {
+            return;
+        }
+        MqttMessage mqtt_message = new MqttMessage();
+        mqtt_message.setPayload(message.getBytes());
+        try {
+            client.publish(pub_topic, mqtt_message);
+        } catch (MqttException e) {
+            e.printStackTrace();
+        }
+    }
+```
+
+修改app名称
+
+![7518a470b8c11d377447579c853c18e](https://github.com/user-attachments/assets/332890fe-102e-4030-a167-9111df980239)
+
+
+修改app图标
+![2e67a20303f2e9fd269e960023d0f40](https://github.com/user-attachments/assets/26afc893-3361-4996-86f0-d7ee5c1e425d)
+
+![0e0ab3b34b398768b16b9a1874fddec](https://github.com/user-attachments/assets/0a55708e-bcf1-4744-9186-c718972dea02)
+
+
+
+
 ### TASK 2.2.2
 拓展2:如果你不愿意使⽤软件进⾏展⽰，也可以选择搭建⼀个web，进⾏展⽰（阿⾥云物联⽹平台有免
 费对学⽣开放的简单web搭建，也可以选择⼿搓）
