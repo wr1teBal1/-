@@ -367,7 +367,7 @@ void onMqttMessage(int messageSize) {
 
 文字与按钮显示（“关”按钮省略）
 ```java
-<LinearLayout
+  <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -396,8 +396,8 @@ void onMqttMessage(int messageSize) {
 
 定义密钥，用户名及密码
 
-```c++
-private String productKey = "k28xr7bv6Qh";
+```java
+    private String productKey = "k28xr7bv6Qh";
     private String deviceName = "app_dev";
 
     private String deviceSecret = "89c41d57befdc89787c69ca79589bfd8";
@@ -405,13 +405,13 @@ private String productKey = "k28xr7bv6Qh";
 
 定义订阅与发送地址
 
-```c++
-private final String pub_topic = "/sys/k28xr7bv6Qh/app_dev/thing/event/property/post";
+```java
+    private final String pub_topic = "/sys/k28xr7bv6Qh/app_dev/thing/event/property/post";
 
     private final String sub_topic = "/sys/k28xr7bv6Qh/app_dev/thing/service/property/set";
 ```
 云端连接方法
-```c++
+```java
 private void mqtt_init() {
         try {
 
@@ -486,8 +486,8 @@ private void mqtt_init() {
 
 定义按钮功能
 
-```c++
-Button btn_open = findViewById(R.id.btn_open);
+```java
+        Button btn_open = findViewById(R.id.btn_open);
         Button btn_close = findViewById(R.id.btn_close);
 
         btn_open.setOnClickListener(new View.OnClickListener() {
@@ -508,7 +508,7 @@ Button btn_open = findViewById(R.id.btn_open);
 
 实现按钮功能（向云端发送json数据）
 
-```c++
+```java
 private void publish_message(String message) {
         if (client == null || !client.isConnected()) {
             return;
