@@ -668,12 +668,71 @@ private void publish_message(String message) {
 
 
 
-### TASK 2.2.2
-拓展2:如果你不愿意使⽤软件进⾏展⽰，也可以选择搭建⼀个web，进⾏展⽰（阿⾥云物联⽹平台有免
-费对学⽣开放的简单web搭建，也可以选择⼿搓）
 ### TASK 2.2.3
 拓展3:使⽤阿⾥云物联⽹平台，从mcu往云端发送数据，并且在⼿机软件或web界⾯显⽰。（可以⾃⼰
 设定⼀个数据，也可以使⽤mcu读取传感器数据）
+
+这里我们可以读取esp32的ip
+
+先修改arduino ide中的代码
+只需加入这一行，先让单片机读取并上传自己的ip
+```c++
+    json_data["IP"] = WiFi.localIP().toString();
+```
+下面是软件的改进
+
+先加入ip的显示
+```java
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="50dp"
+        android:gravity="center">
+
+        <TextView
+            android:layout_width="103dp"
+            android:layout_height="wrap_content"
+            android:text="IP地址"
+            android:textColor="@color/black"
+            android:textSize="17dp" />
+
+        <TextView
+            android:id="@+id/tv_IP"
+            android:layout_width="179dp"
+            android:layout_height="wrap_content"
+            android:text="0.0.0.0"
+            android:textColor="@color/black"
+            android:textSize="17dp" />
+
+    </LinearLayout>
+```
+默认ip记为0.0.0.0
+（顺便将上面两行也居中了）
+
+![0195823a0cbb32d041e7421def02cca](https://github.com/user-attachments/assets/54323cfe-f430-43e6-b41a-eff721d29bd0)
+
+编写显示控件
+```java
+        TextView tv_IP = findViewById(R.id.tv_IP);
+```
+在抓取函数中加入,并定义ipAddress
+```java
+                            JSONObject items = jsonObjectALL.getJSONObject("items");
+
+                            JSONObject obj_IP = items.getJSONObject("IP");
+
+                            ipAddress = obj_IP.getString("value");
+```
+成功实现
+
+![3ec2bdb374b409ed935f134e9bf7f20](https://github.com/user-attachments/assets/0bd110c6-a53d-4cde-81c8-fbc74c0d9c9a)
+
+与串口监视器中显示相同IP
+
+![e187e53fae3a3ae77ec269b9a9d10c4](https://github.com/user-attachments/assets/1ce7265d-1428-4b49-9c3d-db1cd54192f4)
+
+
 ### TASK 2.2.4
 拓展4:观察你⼿⾥⾯的ESP32-CAM，你会发现，他有⼀个摄像头。请将图像数据回传到云端，并且在
 ⾃⼰的⼿机软件或者web界⾯进⾏展⽰
