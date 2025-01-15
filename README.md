@@ -42,6 +42,7 @@ void loop() {
 
 ```
 下面是在串口程序中检测到的数据
+
 ![58ec2ce25ecebea9f8eee4dcc697db4](https://github.com/user-attachments/assets/63007143-a873-4e5f-b8d7-312799028533)
 
 
@@ -506,7 +507,137 @@ private void mqtt_init() {
         });
 ```
 
-实现按钮功能（向云端发送json数据）
+引入mqtt初始化方法
+
+```java
+    @SuppressLint("RestrictedApi")
+    private void mqtt_init() {
+        try {
+
+            String clientId = "a1MoTKOqkVK.test_device1";
+            Map<String, String> params = new HashMap<String, String>(16);
+            params.put("productKey", productKey);
+            params.put("deviceName", deviceName);
+            params.put("clientId", clientId);
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            params.put("timestamp", timestamp);
+            // cn-shanghai
+            String host_url = "tcp://" + productKey + ".iot-as-mqtt.cn-shanghai.aliyuncs.com:1883";
+            String client_id = clientId + "|securemode=2,signmethod=hmacsha1,timestamp=" + timestamp + "|";
+            String user_name = deviceName + "&" + productKey;
+            String password = com.example.dengzenmemiele_mqtt.AliyunloTSignUtil.sign(params, deviceSecret, "hmacsha1");
+
+            //host为主机名，test为clientid即连接MQTT的客户端ID，一般以客户端唯一标识符表示，MemoryPersistence设置clientid的保存形式，默认为以内存保存
+            System.out.println(">>>" + host_url);
+            System.out.println(">>>" + client_id);
+
+            //connectMqtt(targetServer, mqttclientId, mqttUsername, mqttPassword);
+
+            client = new MqttClient(host_url, client_id, new MemoryPersistence());
+
+
+            //MQTT的连接设置
+            options = new MqttConnectOptions();
+            //设置是否清空session,这里如果设置为false表示服务器会保留客户端的连接记录，这里设置为true表示每次连接到服务器都以新的身份连接
+            options.setCleanSession(false);
+            //设置连接的用户名
+            options.setUserName(user_name);
+            //设置连接的密码
+            options.setPassword(password.toCharArray());
+            // 设置超时时间 单位为秒
+            options.setConnectionTimeout(10);
+            // 设置会话心跳时间 单位为秒 服务器会每隔1.5*20秒的时间向客户端发送个消息判断客户端是否在线，但这个方法并没有重连的机制
+            options.setKeepAliveInterval(60);
+            //设置回调
+            client.setCallback(new MqttCallback() {
+                @Override
+                public void connectionLost(Throwable cause) {
+                    //连接丢失后，一般在这里面进行重连
+                    System.out.println("connectionLost----------");
+                }
+
+                @Override
+                public void deliveryComplete(IMqttDeliveryToken token) {
+                    //publish后会执行到这里
+                    System.out.println("deliveryComplete---------" + token.isComplete());
+                }
+
+                @Override
+                public void messageArrived(String topicName, MqttMessage message)
+                        throws Exception {
+                    //subscribe后得到的消息会执行到这里面
+                    System.out.println("messageArrived----------");
+                    Message msg = new Message();
+                    //封装message包
+                    msg.what = 3;   //收到消息标志位
+                    msg.obj = message.toString();
+                    //发送messge到handler
+                    handler.sendMessage(msg);    // hander 回传
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+```
+mqtt链接
+```java
+    private void start_reconnect() {
+        scheduler = Executors.newSingleThreadScheduledExecutor();
+        scheduler.scheduleAtFixedRate(new Runnable() {
+            @Override
+            public void run() {
+                if (!client.isConnected()) {
+                    mqtt_connect();
+                }
+            }
+        }, 0 * 1000, 10 * 1000, TimeUnit.MILLISECONDS);
+    }
+```
+mqtt订阅（回调）
+```java
+handler = new Handler() {
+            @SuppressLint("SetTextI18n")
+            public void handleMessage(Message msg) {
+                super.handleMessage(msg);
+                switch (msg.what) {
+                    case 1: //开机校验更新回传
+                        break;
+                    case 2:  // 反馈回传
+                        break;
+                    case 3:  //MQTT 收到消息回传   UTF8Buffer msg=new UTF8Buffer(object.toString());
+                        String message = msg.obj.toString();
+                        Log.d("nicecode", "handleMessage: "+ message);
+                        try {
+                            JSONObject jsonObjectALL = null;
+                            jsonObjectALL = new JSONObject(message);
+                            JSONObject items = jsonObjectALL.getJSONObject("items");
+
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                            break;
+                        }
+                        break;
+                    case 30:  //连接失败
+                        Toast.makeText(MainActivity.this, "连接失败", Toast.LENGTH_SHORT).show();
+                        break;
+                    case 31:   //连接成功
+                        Toast.makeText(MainActivity.this, "连接成功", Toast.LENGTH_SHORT).show();
+                        try {
+                            client.subscribe(sub_topic, 1);
+                        } catch (MqttException e) {
+                            e.printStackTrace();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        };
+```
+
+实现按钮功能（app数据向云端的发布）
 
 ```java
 private void publish_message(String message) {
@@ -529,6 +660,7 @@ private void publish_message(String message) {
 
 
 修改app图标
+
 ![2e67a20303f2e9fd269e960023d0f40](https://github.com/user-attachments/assets/26afc893-3361-4996-86f0-d7ee5c1e425d)
 
 ![0e0ab3b34b398768b16b9a1874fddec](https://github.com/user-attachments/assets/0a55708e-bcf1-4744-9186-c718972dea02)
