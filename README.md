@@ -736,3 +736,29 @@ private void publish_message(String message) {
 ### TASK 2.2.4
 拓展4:观察你⼿⾥⾯的ESP32-CAM，你会发现，他有⼀个摄像头。请将图像数据回传到云端，并且在
 ⾃⼰的⼿机软件或者web界⾯进⾏展⽰
+
+
+#杂谈
+
+出现灵异事件，烧录单片机后，他自己会受到off指令，也就是关灯指令，很灵异，之前是没有的
+
+![6b69f148d0ff4cc9d11d65687eed76f](https://github.com/user-attachments/assets/c7a7c6f8-d3e7-4f8e-8303-fff2ab3bfb41)
+
+发现是这个订阅链接在作祟
+
+```
+/sys/k28xr7bv6Qh/esp32cam/thing/event/property/post_reply
+```
+这个是单片机发送信息后，平台给你传送的连接成功的信息，可是被单片机读取了，以为是发出的控制指令
+
+所以我们只需要忽略这条订阅链接发送的信息即可（我的链接可能跟你不一样）
+
+```c++
+  if (topic == "/sys/k28xr7bv6Qh/esp32cam/thing/event/property/post_reply") {
+    Serial.println("Ignored message from topic: /sys/k28xr7bv6Qh/esp32cam/thing/event/property/post_reply");
+    return; // 直接返回，不处理消息
+  }
+```
+将这段代码补充道订阅链接函数 0nMqttMessage 中即可解决问题
+
+![339af4ab432ef3eef8a135410a1e1bc](https://github.com/user-attachments/assets/4fd4b46b-f4ae-4b58-944e-99f5fcbfad4a)
