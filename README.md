@@ -762,3 +762,7 @@ private void publish_message(String message) {
 将这段代码补充道订阅链接函数 0nMqttMessage 中即可解决问题
 
 ![339af4ab432ef3eef8a135410a1e1bc](https://github.com/user-attachments/assets/4fd4b46b-f4ae-4b58-944e-99f5fcbfad4a)
+
+正常开关
+
+![2f2b74a11bfb0742d550e4ab75dd913](https://github.com/user-attachments/assets/9ba0d913-10f9-44a9-aa7b-ef4dec1ee705)
