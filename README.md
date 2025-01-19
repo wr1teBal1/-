@@ -738,7 +738,7 @@ private void publish_message(String message) {
 ⾃⼰的⼿机软件或者web界⾯进⾏展⽰
 
 
-#杂谈
+# 杂谈
 
 出现灵异事件，烧录单片机后，他自己会受到off指令，也就是关灯指令，很灵异，之前是没有的
 
